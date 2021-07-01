@@ -39,7 +39,8 @@ local grafana = import "../components/grafana.jsonnet";
   // Shared metadata for all components
   kubeprod: kube.Namespace("kubeprod"),
 
- 
+  cloudflare_api_key:: $.config.cloudflareApiKey,
+  cloudflare_email:: $.config.cloudflareEmail,
   external_dns_zone_name:: $.config.dnsZone,
   letsencrypt_contact_email:: $.config.contactEmail,
   letsencrypt_environment:: "prod",
@@ -54,16 +55,6 @@ local grafana = import "../components/grafana.jsonnet";
     },
   },
 
-  pdns: pdns {
-    galera: $.galera,
-    zone: $.external_dns_zone_name,
-    secret+: {
-      data_+: $.config.powerDns,
-    },
-    ingress+: {
-      host: "pdns." + $.external_dns_zone_name,
-    },
-  },
 
   edns: edns {
     deploy+: {
@@ -74,14 +65,12 @@ local grafana = import "../components/grafana.jsonnet";
             containers_+: {
               edns+: {
                 args_+: {
-                  provider: "pdns",
-                  "pdns-server": "http://%s:%s" % [
-                    $.pdns.svc.host,
-                    $.pdns.svc.port,
-                  ]
+                  provider: "cloudflare",
+                   
                 },
                 env_+: {
-                  EXTERNAL_DNS_PDNS_API_KEY: kube.SecretKeyRef($.pdns.secret, "api_key"),
+                  CF_API_KEY: $.cloudflare_api_key,
+                  CF_API_EMAIL: $.cloudflare_email,
                 },
               },
             },
